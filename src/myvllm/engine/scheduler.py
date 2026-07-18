@@ -4,11 +4,24 @@ from myvllm.engine.block_manager import BlockManager
 
 
 class Scheduler:
-    def __init__(self, max_num_sequences: int, max_num_batched_tokens: int, max_cached_blocks: int, block_size: int, eos: int):
+    def __init__(self, max_num_sequences: int, max_num_batched_tokens: int,
+                 max_cached_blocks: int, block_size: int, eos: int,
+                 max_model_length: int):
+        if max_model_length <= 0:
+            raise ValueError("max_model_length must be greater than 0")
+
+        max_kv_cache_tokens = max_cached_blocks * block_size
+        if max_model_length > max_kv_cache_tokens:
+            raise ValueError(
+                f"max_model_length ({max_model_length}) exceeds the KV cache "
+                f"capacity ({max_kv_cache_tokens} tokens)"
+            )
+
         # block manager
         self.block_manager = BlockManager(max_cached_blocks, block_size)
         self.max_num_batched_tokens = max_num_batched_tokens
         self.max_num_sequences = max_num_sequences
+        self.max_model_length = max_model_length
         # sequence queue
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
@@ -19,6 +32,26 @@ class Scheduler:
         return len(self.waiting) == 0 and len(self.running) == 0
     
     def add_sequence(self, sequence: Sequence):
+        request_max_length = sequence.max_model_length
+        if request_max_length is None:
+            request_max_length = self.max_model_length
+        elif request_max_length > self.max_model_length:
+            raise ValueError(
+                f"Request max_model_length ({request_max_length}) exceeds the "
+                f"engine limit ({self.max_model_length})"
+            )
+        elif request_max_length <= 0:
+            raise ValueError("Request max_model_length must be greater than 0")
+
+        # Prefill must leave room for at least one completion token. We reject
+        # overlong prompts instead of silently dropping their prefix.
+        if sequence.num_prompt_tokens >= request_max_length:
+            raise ValueError(
+                f"Prompt length ({sequence.num_prompt_tokens}) must be smaller "
+                f"than the request context limit ({request_max_length})"
+            )
+
+        sequence.max_model_length = request_max_length
         self.waiting.append(sequence)
 
 

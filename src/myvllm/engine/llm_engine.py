@@ -49,7 +49,8 @@ class LLMEngine:
             max_num_batched_tokens=config.get("max_num_batched_tokens", 1024),
             max_cached_blocks=config.get("max_cached_blocks", 1024),
             block_size=config.get("block_size", 256),
-            eos=config.get("eos", 50256)
+            eos=config.get("eos", 50256),
+            max_model_length=config["max_model_length"],
         )
 
         atexit.register(self.exit)

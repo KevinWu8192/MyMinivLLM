@@ -153,9 +153,10 @@ class BlockManager:
         seq.num_cached_tokens = 0
 
     # this is to check whether we can append tokens to this sequence
-    # when that token would require allocating a new block.
+    # The token was already added to the sequence by postprocess(). A new
+    # block is needed when that token is the first token in a block.
     def can_append(self, seq: Sequence) -> bool:
-        if seq.num_tokens % self.block_size == 0:
+        if seq.num_tokens % self.block_size == 1:
             return len(self.free_block_ids) > 0
         return True
 
