@@ -1,6 +1,6 @@
 # 摘要 — Commit ID 区间：[`23d95ae`](https://github.com/KevinWu8192/MyMinivLLM/commit/23d95aea25610777eb9f7249f26a74a651140e6d) → [`acdac94`](https://github.com/KevinWu8192/MyMinivLLM/commit/acdac942b3e918855125da7e03d63cba3feb8fc9)
 
-**Tag：** [`release-1`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-1)
+**Tag：** [`release-1`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-1)
 
 此 Release 建立了正确的跨请求 Prefix Cache Block 复用机制，并让 KV Cache 容量检查能够识别可复用的 Block。
 

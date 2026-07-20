@@ -1,6 +1,6 @@
 # 摘要 — Commit ID 区间：[`4d1760d`](https://github.com/KevinWu8192/MyMinivLLM/commit/4d1760ded441988663c59f5bd9479a80de234731)
 
-**Tag：** [`release-4`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-4)
+**Tag：** [`release-4`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-4)
 
 此 Release 使用支持张量并行的流式加载器替换原 Qwen3 Checkpoint Loader，正确处理 Packed Parameter，并严格验证 Checkpoint 完整性。
 

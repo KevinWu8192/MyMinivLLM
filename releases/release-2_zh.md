@@ -1,6 +1,6 @@
 # 摘要 — Commit ID 区间：[`798b455`](https://github.com/KevinWu8192/MyMinivLLM/commit/798b4552a1401f1eebbfff865816a95169aada5f)
 
-**Tag：** [`release-2`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-2)
+**Tag：** [`release-2`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-2)
 
 此 Release 防止请求超过 KV Cache 或上下文容量，并修复 Decode 阶段判断何时需要新 KV Block 的边界条件。
 

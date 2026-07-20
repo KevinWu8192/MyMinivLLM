@@ -15,11 +15,13 @@ This repository provides a fully runnable MiniVLLM inference framework. It fixes
 
 ## Recent Releases
 
-- **Release 1 · `23d95ae–acdac94` · Tag [`release-1`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-1):** Cross-request Prefix Cache block reuse and prefix-aware KV Cache allocation — [English](releases/release-1.md) | [简体中文](releases/release-1_zh.md)
-- **Release 2 · `798b455` · Tag [`release-2`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-2):** Context limits, KV Cache capacity, and Decode block-boundary allocation — [English](releases/release-2.md) | [简体中文](releases/release-2_zh.md)
-- **Release 3 · `686b547` · Tag [`release-3`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-3):** Prefix Cache-aware Prefill Attention over the complete KV context — [English](releases/release-3.md) | [简体中文](releases/release-3_zh.md)
-- **Release 4 · `4d1760d` · Tag [`release-4`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-4):** Qwen3 tensor-parallel checkpoint loading and strict validation — [English](releases/release-4.md) | [简体中文](releases/release-4_zh.md)
-- **Release 5 · `ee950af` · Tag [`release-5`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-5):** Multi-GPU coordination, scheduling fairness, numerical stability, and CUDA Graph correctness — [English](releases/release-5.md) | [简体中文](releases/release-5_zh.md)
+| Release | Commit range | Tag | Highlights | Documentation |
+|---|---|---|---|---|
+| Release 1 | `23d95ae–acdac94` | [`release-1`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-1) | Cross-request Prefix Cache block reuse and prefix-aware KV Cache allocation | [English](releases/release-1.md) · [简体中文](releases/release-1_zh.md) |
+| Release 2 | `798b455` | [`release-2`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-2) | Context limits, KV Cache capacity, and Decode block-boundary allocation | [English](releases/release-2.md) · [简体中文](releases/release-2_zh.md) |
+| Release 3 | `686b547` | [`release-3`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-3) | Prefix Cache-aware Prefill Attention over the complete KV context | [English](releases/release-3.md) · [简体中文](releases/release-3_zh.md) |
+| Release 4 | `4d1760d` | [`release-4`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-4) | Qwen3 tensor-parallel checkpoint loading and strict validation | [English](releases/release-4.md) · [简体中文](releases/release-4_zh.md) |
+| Release 5 | `ee950af` | [`release-5`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-5) | Multi-GPU coordination, scheduling fairness, numerical stability, and CUDA Graph correctness | [English](releases/release-5.md) · [简体中文](releases/release-5_zh.md) |
 
 A custom implementation of vLLM inference engine with attention mechanism benchmarks, based on Nano-vLLM but with self-contained paged attention and flash attention implementation. 
 

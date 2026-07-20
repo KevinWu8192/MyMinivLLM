@@ -1,6 +1,6 @@
 # 摘要 — Commit ID 区间：[`686b547`](https://github.com/KevinWu8192/MyMinivLLM/commit/686b547b798518fcbd558e51e3d0a387c1bdbe07)
 
-**Tag：** [`release-3`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-3)
+**Tag：** [`release-3`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-3)
 
 此 Release 修复 Prefix Cache 命中后的 Prefill Attention，使其读取缓存前缀与新 Token 组成的完整 KV Context，而不是只关注未缓存的后缀。
 

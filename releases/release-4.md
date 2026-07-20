@@ -1,6 +1,6 @@
 # Summary — Commit ID Range: [`4d1760d`](https://github.com/KevinWu8192/MyMinivLLM/commit/4d1760ded441988663c59f5bd9479a80de234731)
 
-**Tag:** [`release-4`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-4)
+**Tag:** [`release-4`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-4)
 
 This release replaces the Qwen3 checkpoint loader with a tensor-parallel-aware, streaming loader that correctly handles packed parameters and validates checkpoint completeness.
 

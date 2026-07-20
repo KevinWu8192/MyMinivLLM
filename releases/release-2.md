@@ -1,6 +1,6 @@
 # Summary — Commit ID Range: [`798b455`](https://github.com/KevinWu8192/MyMinivLLM/commit/798b4552a1401f1eebbfff865816a95169aada5f)
 
-**Tag:** [`release-2`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-2)
+**Tag:** [`release-2`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-2)
 
 This release prevents requests from exceeding KV Cache or context capacity and fixes the Decode boundary that decides when a new KV block is required.
 

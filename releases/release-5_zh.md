@@ -1,6 +1,6 @@
 # 摘要 — Commit ID 区间：[`ee950af`](https://github.com/KevinWu8192/MyMinivLLM/commit/ee950af0b35f5ac87fa6a495238cf6ebb57aa99d)
 
-**Tag：** [`release-5`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-5)
+**Tag：** [`release-5`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-5)
 
 此 Release 对完整推理路径进行加固，包括多 GPU Worker 协同、Prefix Cache 记账、调度公平性、数值稳定性、CUDA Graph Decode 以及引擎 API 边界行为。
 
