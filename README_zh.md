@@ -8,6 +8,19 @@
 </p>
 
 # miniVLLM
+
+首先，感谢原作者提供了一个最小版本的 vLLM 实现，让学习 vLLM 变得更加容易。不过，原 MiniVLLM 项目并不完善，其中存在不少 Bug，无法可靠地跑通端到端的张量并行（TP）推理流程，推理调度和 KV Cache 管理也有许多逻辑漏洞。
+
+本项目提供了一个可以完整运行的 MiniVLLM 推理框架，修复了原项目中的各种 Bug，并在此基础上持续增加新特性。Bug 修复和新特性会以 Release 的形式发布，每个 Release 都会标注对应的 Commit ID 区间。学习者可以跟随 Release，一步一步地修复 Bug、学习新特性，也可以尝试添加自己的新特性。
+
+## 最近发布
+
+- **Release 1 · `23d95ae–acdac94` · Tag [`release-1`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-1)：** 跨请求 Prefix Cache Block 复用与感知 Prefix 的 KV Cache 分配 — [简体中文](releases/release-1_zh.md) | [English](releases/release-1.md)
+- **Release 2 · `798b455` · Tag [`release-2`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-2)：** 上下文限制、KV Cache 容量与 Decode Block 分配边界 — [简体中文](releases/release-2_zh.md) | [English](releases/release-2.md)
+- **Release 3 · `686b547` · Tag [`release-3`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-3)：** Prefix Cache 命中后基于完整 KV Context 的 Prefill Attention — [简体中文](releases/release-3_zh.md) | [English](releases/release-3.md)
+- **Release 4 · `4d1760d` · Tag [`release-4`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-4)：** Qwen3 张量并行 Checkpoint 加载与严格验证 — [简体中文](releases/release-4_zh.md) | [English](releases/release-4.md)
+- **Release 5 · `ee950af` · Tag [`release-5`](https://github.com/KevinWu8192/MyMinivLLM/tree/release-5)：** 多 GPU 协同、调度公平性、数值稳定性与 CUDA Graph 正确性 — [简体中文](releases/release-5_zh.md) | [English](releases/release-5.md)
+
 自定义实现的vLLM推理引擎，基于Nano-vLLM。添加了注意力机制的基准测试，以及Pageattention、FlashAttention的代码实现。
 
 提供了预填充阶段的FlashAttention以及解码阶段的Pageattention的基准测试。
