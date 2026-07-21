@@ -436,16 +436,30 @@ class ModelRunner:
             bs = input_ids.size(0)
             context = get_context()
 
-            # finds smallest captured graph that fits the batch size
-            graph = self.graphs[next(bs_ for bs_ in self.graphs.keys() if bs_ >= bs)]
+            # Find the smallest captured graph that fits the batch size. Graphs
+            # are inserted in descending capture order, so relying on dict
+            # iteration would select the largest graph for every request.
+            captured_bs = min(
+                graph_bs for graph_bs in self.graphs if graph_bs >= bs
+            )
+            graph = self.graphs[captured_bs]
             vars = self.graph_vars
-            # copy input data into graph variables
+
+            # CUDA Graph replays the entire captured batch. Initialize padded
+            # rows as inert requests before copying the live rows; in
+            # particular, slot_mapping must be -1 or padded tokens overwrite
+            # real KV-cache slots.
+            vars['input_ids'][:captured_bs].zero_()
+            vars['slot_mapping'][:captured_bs].fill_(-1)
+            vars['context_lens'][:captured_bs].zero_()
+            vars['block_tables'][:captured_bs].fill_(-1)
+
             vars['input_ids'][:bs].copy_(input_ids)
-            vars['slot_mapping'][:bs].fill_(-1)
             vars['slot_mapping'][:bs].copy_(context.slot_mapping)
-            vars["context_lens"].zero_()
             vars['context_lens'][:bs].copy_(context.context_lens)
-            vars["block_tables"][:bs, :context.block_tables.size(1)] = context.block_tables
+            vars['block_tables'][
+                :bs, :context.block_tables.size(1)
+            ].copy_(context.block_tables)
             # replay the graph
             graph.replay()
             logits = self.model.compute_logits(vars['outputs'][:bs])
