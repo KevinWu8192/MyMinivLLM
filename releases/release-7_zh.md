@@ -1,6 +1,6 @@
 # 摘要 — Commit ID 区间：[`7d1b0f1`](https://github.com/KevinWu8192/MinivLLM/commit/7d1b0f1cb8c21f31e92241cfe7457fba769a2ddf)
 
-**Tag：** [`release-7`](https://github.com/KevinWu8192/MinivLLM/tree/release-7)
+**Tag：** [`release-7`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-7)
 
 本次 Release 新增 Qwen3-32B 的端到端模型组装支持：提供独立且兼容 Hugging Face 的运行配置，将模型注册到现有张量并行 Runner，并把其 Attention 层接入 Release 6 引入的 Large-scale Decode Kernel，同时保留 Qwen3-0.6B 的默认执行路径。
 

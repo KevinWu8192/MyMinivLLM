@@ -1,6 +1,6 @@
 # Summary — Commit ID Range: [`7d1b0f1`](https://github.com/KevinWu8192/MinivLLM/commit/7d1b0f1cb8c21f31e92241cfe7457fba769a2ddf)
 
-**Tag:** [`release-7`](https://github.com/KevinWu8192/MinivLLM/tree/release-7)
+**Tag:** [`release-7`](https://github.com/KevinWu8192/MinivLLM-Fixed/tree/release-7)
 
 This release adds end-to-end model assembly support for Qwen3-32B. It provides a dedicated Hugging Face-compatible runtime configuration, registers the model with the existing tensor-parallel runner, and routes its Attention layers to the large-scale Decode Kernel introduced in Release 6 while preserving the default Qwen3-0.6B path.
 
