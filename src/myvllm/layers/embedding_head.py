@@ -80,7 +80,9 @@ class ParallelLMHead(VocabParallelEmbedding):
         logits = torch.nn.functional.linear(x, self.weight)
         if self.tp_size > 1:
             # prepare for all_gather only for GPU 0 which is the main GPU
-            all_logits = [torch.empty(logits.size(), device=logits.device) for _ in range(self.tp_size)] if self.tp_rank == 0 else None
+            all_logits = [
+                torch.empty_like(logits) for _ in range(self.tp_size)
+            ] if self.tp_rank == 0 else None
             # dist.gather collects the logits from all GPUs to GPU 0
             dist.gather(logits, gather_list=all_logits, dst=0)
             # concatenate

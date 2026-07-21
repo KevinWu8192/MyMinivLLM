@@ -8,6 +8,7 @@ import torch
 from myvllm.engine.llm_engine import LLMEngine, resolve_checkpoint_once
 from myvllm.engine.block_manager import BlockManager
 from myvllm.engine.sequence import Sequence
+from myvllm.layers.embedding_head import ParallelLMHead
 from myvllm.models.qwen3 import get_qwen_positions
 from myvllm.sampling_parameters import SamplingParams
 
