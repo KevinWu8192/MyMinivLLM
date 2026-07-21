@@ -31,11 +31,11 @@ Read this reference before creating or revising release documentation.
 **Fixes**
 
 * <Detailed implementation step and why it works.> ([Fix](<immutable-fixed-code-url>))
-
-## Validation
-
-<Committed tests, current-run verification, remaining hardware-dependent checks.>
 ```
+
+When a release adds a benchmark or another measurable feature, put its `Results` subsection immediately below that feature. Include the test hardware, workload shape, key metrics, interpretation, and links to committed raw results there.
+
+A standalone `## Validation` section is optional. Use it only for release-relevant evidence that does not fit naturally beside a feature or fix. Do not add routine boilerplate about the current machine architecture, missing GPU, unavailable dependencies, or tests that could not be rerun.
 
 For a single-commit release, use:
 
@@ -74,11 +74,11 @@ Use the same structure and URL order:
 **修复**
 
 * <详细实现步骤及其正确性原因。> ([修复](<immutable-fixed-code-url>))
-
-## 验证
-
-<已提交测试、本次实际验证、仍依赖硬件的检查。>
 ```
+
+当 Release 新增 Benchmark 或其他可测量功能时，将其 `结果` 子节直接放在对应功能下面，并在同一处说明测试硬件、负载 Shape、关键指标、结果分析及已提交的原始结果链接。
+
+独立的 `## 验证` 章节是可选项。仅当存在无法自然放在功能或修复旁边、且对 Release 有独立价值的证据时使用。不要例行写入当前机器架构、没有 GPU、依赖缺失或无法重复运行测试等环境说明。
 
 ## English README table
 
@@ -107,3 +107,4 @@ Use the same structure and URL order:
 - Link a Bug to the last revision where it exists, normally `<fix-commit>^`.
 - Use the canonical remote repository for Tag tree links.
 - Keep English and Chinese URL sequences identical.
+- Focus release content on user-visible features, fixed defects, and meaningful results. Exclude file moves, naming cleanup, and directory organization unless they change a supported workflow or compatibility contract.

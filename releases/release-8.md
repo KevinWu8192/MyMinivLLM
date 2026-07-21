@@ -24,23 +24,18 @@ This release validates Qwen3-32B end to end on two RTX PRO 6000 Blackwell GPUs. 
 * The runner measures computed and cached Prompt Tokens, cache-hit rate, Prefill and Decode time, aggregate Decode Tokens per second, end-to-end output Tokens per second, and requests per second. `ignore_eos=True` makes every workload generate the exact requested Token count. ([Implementation](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/benchmarks/benchmark_qwen3_32b_stress.py#L260-L338))
 * Each suite creates an engine shaped to its actual maximum Prompt, output length, concurrency, and batched-token budget, so a 32K maximum-output graph does not inflate the high-concurrency workload. ([Implementation](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/benchmarks/benchmark_qwen3_32b_stress.py#L400-L530))
 
-### 2. Unified Test, Benchmark, and Result Layout
+#### Benchmark Results
 
-**Files**
+The test system used two NVIDIA RTX PRO 6000 Blackwell Server Edition GPUs with 95.0 GiB each, TP=2, 50 Intel Xeon Platinum 8470Q vCPUs, 240 GiB host memory, BF16 weights, and CUDA Graphs enabled.
 
-* `tests/README.md`
-* `tests/benchmarks/README.md`
-* `tests/benchmarks/benchmark_attention_decode.py`
-* `tests/benchmarks/benchmark_attention_prefill.py`
-* `tests/benchmarks/benchmark_engine_tps.py`
-* `tests/benchmarks/benchmark_qwen3_32b_stress.py`
-* `tests/results/qwen3_32b/`
+| Suite | Shape | Key result |
+|---|---|---|
+| High concurrency | 16 requests × 4,075 Prompt + 256 output | 5,954.27 Prefill tok/s, 435.13 aggregate Decode tok/s, 201.48 end-to-end output tok/s, 20.33 s total |
+| Long decode | 2 requests × 8,169 Prompt + 4,096 output | 68.64 aggregate Decode tok/s, 66.57 end-to-end output tok/s, 123.05 s total |
+| Maximum output | 1 request × 8,169 Prompt + 32,768 output | All 32,768 Tokens completed; 35.60 Decode tok/s; 920.45 s Decode and 923.03 s total |
+| Prefix Cache | 8 requests × approximately 16K Prompt + 256 output | 98.69% hot-cache hit rate; Prefill fell from 31.902 s to 1.087 s; total time improved 3.91× |
 
-**Features**
-
-* Unit tests remain discoverable as `tests/test_*.py`; performance drivers now use `tests/benchmarks/benchmark_<scope>.py`; committed measurements use `tests/results/<model>/stress_<suite>.json`. The catalog records requirements and canonical commands for every retained benchmark. ([Organization](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/benchmarks/README.md#L1-L56))
-* The legacy root-level `benchmark_decoding.py` was removed because it copied an old Decode kernel into the driver. `benchmark_attention_decode.py` instead imports both production implementations, preventing benchmark code from drifting away from the engine.
-* Hardware, workload shapes, raw metrics, and derived comparisons are documented beside the immutable JSON evidence. ([Results](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/results/qwen3_32b/README.md#L1-L51))
+The Prefix Cache reused 129,024 Tokens, or 16,128 Tokens per request: exactly 63 complete 256-token Blocks. The maximum-output run reached 40,937 total Tokens, only 23 below the configured 40,960 position capacity. Raw evidence is committed for [high concurrency](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/results/qwen3_32b/stress_high_concurrency.json), [long Decode](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/results/qwen3_32b/stress_long_decode.json), [maximum output](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/results/qwen3_32b/stress_max_output.json), and [Prefix Cache](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/results/qwen3_32b/stress_prefix_cache.json).
 
 ## Major Fixes
 
@@ -120,16 +115,3 @@ For captured sizes `{16, 8, 4, 2, 1}` and runtime `bs = 3`, the old dictionary i
 
 * Decode explicitly takes `min(graph_bs for graph_bs in self.graphs if graph_bs >= bs)`. Before replay it zeroes padded input and context lengths, fills padded slot mappings and Block Tables with `-1`, and then copies only live request rows. ([Fix](https://github.com/KevinWu8192/MinivLLM/blob/6972cb5c3853e5e0099ad7947688c704391fb3af/src/myvllm/engine/model_runner.py#L435-L465))
 * A boundary test uses `bs = 3`, verifies selection of the four-row graph, checks every inert sentinel value, and confirms that only three output rows are returned. ([Fix](https://github.com/KevinWu8192/MinivLLM/blob/6972cb5c3853e5e0099ad7947688c704391fb3af/tests/test_engine_boundaries.py#L100-L147))
-
-## Qwen3-32B Benchmark Results
-
-The test system used two NVIDIA RTX PRO 6000 Blackwell Server Edition GPUs with 95.0 GiB each, TP=2, 50 Intel Xeon Platinum 8470Q vCPUs, 240 GiB host memory, BF16 weights, and CUDA Graphs enabled.
-
-| Suite | Shape | Key result |
-|---|---|---|
-| High concurrency | 16 requests × 4,075 Prompt + 256 output | 5,954.27 Prefill tok/s, 435.13 aggregate Decode tok/s, 201.48 end-to-end output tok/s, 20.33 s total |
-| Long decode | 2 requests × 8,169 Prompt + 4,096 output | 68.64 aggregate Decode tok/s, 66.57 end-to-end output tok/s, 123.05 s total |
-| Maximum output | 1 request × 8,169 Prompt + 32,768 output | All 32,768 Tokens completed; 35.60 Decode tok/s; 920.45 s Decode and 923.03 s total |
-| Prefix Cache | 8 requests × approximately 16K Prompt + 256 output | 98.69% hot-cache hit rate; Prefill fell from 31.902 s to 1.087 s; total time improved 3.91× |
-
-The Prefix Cache reused 129,024 Tokens, or 16,128 Tokens per request: exactly 63 complete 256-token Blocks. The maximum-output run reached 40,937 total Tokens, only 23 below the configured 40,960 position capacity. Raw evidence is committed for [high concurrency](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/results/qwen3_32b/stress_high_concurrency.json), [long Decode](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/results/qwen3_32b/stress_long_decode.json), [maximum output](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/results/qwen3_32b/stress_max_output.json), and [Prefix Cache](https://github.com/KevinWu8192/MinivLLM/blob/bfefde51df92d1bbc1b3291c10c0b5e88077f3a6/tests/results/qwen3_32b/stress_prefix_cache.json).

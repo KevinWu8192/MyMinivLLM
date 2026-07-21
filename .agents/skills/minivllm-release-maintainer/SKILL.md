@@ -17,6 +17,7 @@ Before editing release documentation, read [references/release-format.md](refere
 3. Build every factual claim from the repository history. Read the actual diff, the buggy parent revision, the fixed revision, and relevant tests.
 4. Keep English and Simplified Chinese documents structurally equivalent. Their prose may be idiomatic, but their sections and link targets should match.
 5. Make the documentation useful for learning. Explain non-obvious execution order, state transitions, tensor shapes, Block/KV mappings, and scheduler behavior instead of merely restating commit messages.
+6. Keep release notes focused on shipped behavior, fixed defects, and meaningful measured outcomes. Repository housekeeping such as moving files, normalizing names, or reorganizing directories is not a release feature unless it changes a user-facing workflow, compatibility contract, or supported command.
 
 ## 1. Inspect repository state safely
 
@@ -58,6 +59,7 @@ Group commits chronologically using these rules:
 - Do not combine unrelated correctness, model-loading, scheduling, or Kernel work merely to reduce the release count.
 - Make each release endpoint runnable and conceptually teachable.
 - Cover the requested commit interval exactly once: no missing commits and no overlapping release ranges.
+- Include housekeeping commits in the Commit ID range when they belong chronologically, but do not promote their file movement or naming cleanup into Major Features or README highlights without independent user-facing value.
 
 When the user already specifies release boundaries, preserve them unless repository evidence shows they are invalid.
 
@@ -115,7 +117,7 @@ Describe the fix more deeply than the commit message. Follow the actual data flo
 
 For complex fixes, separate mechanisms into multiple bullets. For example, distinguish cache-hit discovery, capacity admission, physical allocation, Block Table updates, and reference-count changes.
 
-Do not claim runtime validation that was not performed. Distinguish committed tests, tests run in the current environment, and checks that still require CUDA or multiple GPUs.
+Do not claim runtime validation that was not performed. When validation evidence is important to a release claim, distinguish committed tests from tests that were actually run.
 
 ## 6. Write bilingual release documents
 
@@ -133,7 +135,10 @@ Follow the exact structure in the format reference. At minimum include:
 - Concise release purpose.
 - Major Fixes grouped by subsystem.
 - Files, Bugs, Examples where useful, and detailed Fixes.
-- Validation or Result section supported by evidence.
+
+Place benchmark or test results directly beneath the feature they evaluate so readers see the workload, hardware, and outcome together. Do not detach closely related results into a generic section at the end of the document.
+
+A standalone `Validation` / `验证` section is optional, not boilerplate. Add it only when it contributes release-relevant evidence that is not already presented with a feature or fix. Do not add generic notes about the maintainer's current architecture, missing GPU, unavailable dependency, or inability to rerun hardware tests unless that limitation materially qualifies a claim the release makes or the user explicitly requests it.
 
 For a single-commit release, display that one commit as the Commit ID range value rather than inventing a duplicated `A → A` range.
 
@@ -207,7 +212,7 @@ Also verify:
 - Release ranges cover the requested commits exactly once.
 - Each local or remote Tag resolves to the intended release endpoint.
 
-Use `rg` and `diff` for these checks. Report platform limitations when runtime tests cannot run, but do not conflate documentation validation with model/Kernel runtime validation.
+Use `rg` and `diff` for these checks. Keep routine execution-environment limitations in the handoff rather than inserting them into release notes; mention them in the document only when they materially affect how its evidence should be interpreted.
 
 ## Handoff
 
