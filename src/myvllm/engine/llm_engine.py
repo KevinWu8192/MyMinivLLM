@@ -22,8 +22,14 @@ def worker_process(config, rank, event):
     sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)  # Line buffering
     sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', buffering=1)
 
-    model_runner = ModelRunner(config, rank, event)
-    model_runner.loop()
+    try:
+        model_runner = ModelRunner(config, rank, event)
+        model_runner.loop()
+    finally:
+        # ModelRunner.exit normally destroys this group. This fallback covers
+        # constructor failures and a parent that exits during initialization.
+        if dist.is_initialized():
+            dist.destroy_process_group()
 
 
 def resolve_checkpoint_once(config: dict) -> str | None:
@@ -37,8 +43,13 @@ def resolve_checkpoint_once(config: dict) -> str | None:
 
 
 class LLMEngine:
+    _WORKER_JOIN_TIMEOUT_SECONDS = 5
+
     def __init__(self, config: dict):
         self.config = dict(config)
+        self.processes = []
+        self.events = []
+        self.model_runner = None
         world_size = self.config.get("world_size", 1)
         if world_size <= 0:
             raise ValueError("world_size must be greater than 0")
@@ -65,55 +76,108 @@ class LLMEngine:
                 "shared_memory_name", f"myvllm-{uuid.uuid4().hex}"
             )
 
-        # Resolve or download the checkpoint exactly once in the parent. Every
-        # TP rank receives the resulting local directory through its config,
-        # avoiding concurrent snapshot_download calls for the same model.
-        resolve_checkpoint_once(self.config)
+        try:
+            # Resolve or download the checkpoint exactly once in the parent.
+            # Every TP rank receives the resulting local directory.
+            resolve_checkpoint_once(self.config)
 
-        ctx = mp.get_context("spawn")
-        self.processes = []
-        self.events = []
-        for i in range(1, world_size):
-            event = ctx.Event()
-            process = ctx.Process(target=worker_process, args=(self.config, i, event))
-            self.events.append(event)
-            self.processes.append(process)
-            process.start()
-        # start the engine only on the master thread with rank = 0
-        self.model_runner = ModelRunner(self.config, rank=0, event=self.events)
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.get("model_name_or_path", "gpt2"))
-        configured_eos = self.tokenizer.eos_token_id
-        if configured_eos is None:
-            configured_eos = self.config.get("eos")
-        if configured_eos is None:
-            raise ValueError("Tokenizer/config must provide an EOS token ID")
-        self.config["eos"] = configured_eos
-        
-        # scheduler needs to init after model_runner: when world_size > 1,
-        # ModelRunner.__init__ calls dist.init_process_group() which is a
-        # collective barrier — rank-0 blocks until all worker ranks have joined.
-        # The scheduler should only be created after that rendezvous completes.
-        # When world_size == 1 there is no barrier and no real dependency.
-        self.scheduler = Scheduler(
-            max_num_sequences=self.config.get("max_num_sequences", 16),
-            max_num_batched_tokens=self.config.get("max_num_batched_tokens", 1024),
-            max_cached_blocks=self.config.get("max_cached_blocks", 1024),
-            block_size=self.config.get("block_size", 256),
-            eos=configured_eos if configured_eos is not None else self.tokenizer.eos_token_id,
-            max_model_length=self.config["max_model_length"],
-        )
+            ctx = mp.get_context("spawn")
+            for i in range(1, world_size):
+                event = ctx.Event()
+                process = ctx.Process(
+                    target=worker_process,
+                    args=(self.config, i, event),
+                )
+                self.events.append(event)
+                self.processes.append(process)
+                process.start()
+            # Start the engine only on the master thread with rank = 0.
+            self.model_runner = ModelRunner(
+                self.config, rank=0, event=self.events
+            )
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.config.get("model_name_or_path", "gpt2")
+            )
+            configured_eos = self.tokenizer.eos_token_id
+            if configured_eos is None:
+                configured_eos = self.config.get("eos")
+            if configured_eos is None:
+                raise ValueError("Tokenizer/config must provide an EOS token ID")
+            self.config["eos"] = configured_eos
+
+            # Scheduler initialization follows the distributed rendezvous.
+            self.scheduler = Scheduler(
+                max_num_sequences=self.config.get("max_num_sequences", 16),
+                max_num_batched_tokens=self.config.get(
+                    "max_num_batched_tokens", 1024
+                ),
+                max_cached_blocks=self.config.get("max_cached_blocks", 1024),
+                block_size=self.config.get("block_size", 256),
+                eos=configured_eos,
+                max_model_length=self.config["max_model_length"],
+            )
+        except BaseException:
+            self._abort_initialization()
+            raise
 
         atexit.register(self.exit)
 
+    @staticmethod
+    def _destroy_process_group() -> None:
+        if dist.is_initialized():
+            try:
+                dist.destroy_process_group()
+            except BaseException:
+                # Cleanup must continue so orphaned workers are still killed.
+                pass
+
+    def _stop_workers(self, terminate_first: bool) -> None:
+        processes = getattr(self, "processes", [])
+        if terminate_first:
+            for process in processes:
+                if process.is_alive():
+                    try:
+                        process.terminate()
+                    except BaseException:
+                        pass
+
+        for process in processes:
+            try:
+                process.join(timeout=self._WORKER_JOIN_TIMEOUT_SECONDS)
+            except BaseException:
+                pass
+
+        # A worker can be stuck inside NCCL/CUDA and ignore SIGTERM. Escalate
+        # only for workers that did not exit within the grace period.
+        for process in processes:
+            if process.is_alive():
+                try:
+                    process.kill()
+                    process.join(timeout=self._WORKER_JOIN_TIMEOUT_SECONDS)
+                except BaseException:
+                    pass
+
+    def _abort_initialization(self) -> None:
+        model_runner = getattr(self, "model_runner", None)
+        self.model_runner = None
+        if model_runner is not None:
+            try:
+                model_runner.call("exit")
+            except BaseException:
+                pass
+        self._stop_workers(terminate_first=True)
+        self._destroy_process_group()
 
     def exit(self):
-        if getattr(self, "model_runner", None) is None:
-            return
-        model_runner = self.model_runner
+        model_runner = getattr(self, "model_runner", None)
         self.model_runner = None
-        model_runner.call("exit")
-        for process in self.processes:
-            process.join()
+        if model_runner is not None:
+            try:
+                model_runner.call("exit")
+            except BaseException:
+                pass
+        self._stop_workers(terminate_first=False)
+        self._destroy_process_group()
 
     # call scheduler to schedule the next batch
     # return scheduled sequences and whether it is for prefilling

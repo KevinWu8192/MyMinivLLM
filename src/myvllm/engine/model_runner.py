@@ -218,13 +218,37 @@ class ModelRunner:
     # clear memory
     def warmup_model(self):
         torch.cuda.empty_cache()
-        torch.cuda.reset_peak_memory_stats()
         max_tokens = self.config['max_num_batched_tokens']
         max_model_length = self.config['max_model_length']
-        warmup_length = min(max_tokens, max_model_length)
-        batch_size = max(1, max_tokens // warmup_length)
-        seqs = [Sequence(token_ids=[0] * warmup_length, block_size=self.config['block_size']) for _ in range(batch_size)]
+        max_num_sequences = self.config['max_num_sequences']
+        total_tokens = min(
+            max_tokens,
+            max_num_sequences * max_model_length,
+        )
+        batch_size = min(max_num_sequences, total_tokens)
+        tokens_per_sequence, remainder = divmod(total_tokens, batch_size)
+        seqs = [
+            Sequence(
+                token_ids=[0] * (
+                    tokens_per_sequence + (index < remainder)
+                ),
+                block_size=self.config['block_size'],
+            )
+            for index in range(batch_size)
+        ]
+
+        # Compile Triton/torch.compile kernels first. The sampler only executes
+        # on rank 0, so compiler scratch allocations otherwise make rank 0's
+        # measured peak much larger than every worker's.
         self.run(seqs, is_prefill=True)
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+
+        # Only the second pass represents steady-state execution memory. Size
+        # the persistent KV cache from this peak, excluding one-off compilation.
+        torch.cuda.reset_peak_memory_stats()
+        self.run(seqs, is_prefill=True)
+        torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
     # allocate kv cache memory blocks for model
@@ -246,7 +270,15 @@ class ModelRunner:
         # compute the actual byte required of each block
         block_bytes = self.block_size * 2 * num_layers * num_kv_heads * head_dim * self.default_dtype.itemsize
         num_available_kv_blocks = int(available_mem // block_bytes)
-        assert num_available_kv_blocks >= 1, f'Not enough memory to hold at least one block of KV cache on rank {self.rank}'
+        if num_available_kv_blocks < 1:
+            gib = 2**30
+            raise RuntimeError(
+                "Not enough memory to hold one KV-cache block on rank "
+                f"{self.rank}: free={free_mem / gib:.2f} GiB, "
+                f"steady_peak={peak_mem_usage / gib:.2f} GiB, "
+                f"current={current_mem_usage / gib:.2f} GiB, "
+                f"utilization={self.config['gpu_memory_utilization']:.2f}"
+            )
         
         # Synchronize max_cached_blocks across all ranks.
         # Each rank independently computed num_available_kv_blocks from its own
