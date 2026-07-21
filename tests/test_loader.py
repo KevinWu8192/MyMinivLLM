@@ -8,6 +8,7 @@ from transformers import Qwen3ForCausalLM as HFQwen3ForCausalLM
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from myvllm.models.qwen3 import Qwen3ForCausalLM
+from myvllm.layers.attention_large_scale import Attention as LargeScaleAttention
 from myvllm.utils.loader import load_weights
 
 
@@ -116,3 +117,24 @@ def test_loads_transformers_qwen3_state_dict(monkeypatch):
         hf_weights["model.layers.0.mlp.up_proj.weight"],
     ])
     torch.testing.assert_close(gate_up, expected_gate_up)
+
+
+def test_qwen3_can_use_large_scale_attention(monkeypatch):
+    monkeypatch.setattr(torch.distributed, "get_world_size", lambda: 1)
+    monkeypatch.setattr(torch.distributed, "get_rank", lambda: 0)
+
+    model = Qwen3ForCausalLM(
+        vocab_size=8,
+        hidden_size=8,
+        num_heads=4,
+        head_dim=2,
+        num_kv_heads=2,
+        intermediate_size=8,
+        num_layers=2,
+        use_large_scale_attention=True,
+    )
+
+    assert all(
+        isinstance(layer.self_attn.attention, LargeScaleAttention)
+        for layer in model.model.layers
+    )

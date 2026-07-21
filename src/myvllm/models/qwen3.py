@@ -1,4 +1,5 @@
 from myvllm.layers import *
+from myvllm.layers.attention_large_scale import Attention as LargeScaleAttention
 import torch 
 import torch.nn as nn
 
@@ -39,6 +40,8 @@ class Qwen3Attention(nn.Module):
         base: int = 10000,
         max_position: int = 16384,
         block_size: int = 256,
+        # only valid for qwen3 32b model
+        use_large_scale_attention: bool = False,
     ):
         super().__init__()
         self.tp_size = dist.get_world_size()
@@ -80,7 +83,8 @@ class Qwen3Attention(nn.Module):
             max_position=max_position
         )
 
-        self.attention = Attention(
+        attention_cls = LargeScaleAttention if use_large_scale_attention else Attention
+        self.attention = attention_cls(
             self.num_heads,
             head_dim,
             scale,
@@ -198,6 +202,7 @@ class Qwen3DecoderLayer(nn.Module):
         intermediate_size: int = 4 * 1024,
         ffn_bias: bool = True,
         block_size: int = 256,
+        use_large_scale_attention: bool = False,
     ):
         super().__init__()
         gamma = torch.ones(hidden_size)
@@ -213,6 +218,7 @@ class Qwen3DecoderLayer(nn.Module):
             base=base,
             max_position=max_position,
             block_size=block_size,
+            use_large_scale_attention=use_large_scale_attention,
         )
         self.post_attention_layernorm = LayerNorm(gamma, eps=rms_norm_epsilon)
         self.mlp = Qwen3MLP(
@@ -261,6 +267,7 @@ class Qwen3Model(nn.Module):
         ffn_bias: bool = True,
         num_layers: int = 12,
         block_size: int = 256,
+        use_large_scale_attention: bool = False,
     ):
         super().__init__()
         self.embed_tokens = VocabParallelEmbedding(
@@ -281,6 +288,7 @@ class Qwen3Model(nn.Module):
                 intermediate_size=intermediate_size,
                 ffn_bias=ffn_bias,
                 block_size=block_size,
+                use_large_scale_attention=use_large_scale_attention,
             ) for _ in range(num_layers)
         ])
         gamma = torch.ones(hidden_size)
@@ -328,6 +336,7 @@ class Qwen3ForCausalLM(nn.Module):
         num_layers: int = 12,
         tie_word_embeddings: bool = False,
         block_size: int = 256,
+        use_large_scale_attention: bool = False,
     ):
         super().__init__()
         head_dim = head_dim if head_dim is not None else hidden_size // num_heads
@@ -346,6 +355,7 @@ class Qwen3ForCausalLM(nn.Module):
             ffn_bias=ffn_bias,
             num_layers=num_layers,
             block_size=block_size,
+            use_large_scale_attention=use_large_scale_attention,
         )
         self.lm_head = ParallelLMHead(
             num_embeddings=vocab_size,

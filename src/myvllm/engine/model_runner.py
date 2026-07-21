@@ -49,7 +49,7 @@ class ModelRunner:
         path_str = self.config['model_name_or_path']
         model_name = Path(path_str).name
         match model_name:
-            case 'Qwen3-0.6B':
+            case 'Qwen3-0.6B' | 'Qwen3-32B':
                 self.model = Qwen3ForCausalLM(
                     vocab_size=config['vocab_size'],
                     hidden_size=config['hidden_size'],
@@ -66,6 +66,9 @@ class ModelRunner:
                     num_layers=config['num_layers'],
                     tie_word_embeddings=config['tie_word_embeddings'],
                     block_size=self.block_size,
+                    use_large_scale_attention=config.get(
+                        'use_large_scale_attention', model_name == 'Qwen3-32B'
+                    ),
                 )
             case 'Llama-3.2-1B-Instruct':
                 self.model = LlamaForCausalLM(
