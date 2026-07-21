@@ -16,7 +16,7 @@ config = {
     'max_num_batched_tokens': 4096,
     'max_cached_blocks': 1024,
     'block_size': 256,
-    'world_size': 8,
+    'world_size': 2,
     'model_name_or_path': 'Qwen/Qwen3-32B',
     'enforce_eager': False,
     'dtype': 'bfloat16',
