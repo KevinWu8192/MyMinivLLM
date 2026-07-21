@@ -8,7 +8,8 @@ The benchmark provides four independent suites:
 4. max-output: the 8K prompt + 32K output boundary on one request.
 
 Example:
-    HF_HUB_DISABLE_XET=1 uv run python benchmark_qwen32_stress.py \
+    HF_HUB_DISABLE_XET=1 uv run python \
+        tests/benchmarks/benchmark_qwen3_32b_stress.py \
         --model Qwen/Qwen3-32B --suite prefix-cache
 """
 
@@ -22,7 +23,9 @@ from pathlib import Path
 import torch
 from transformers import AutoTokenizer
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from main_qwen32 import config as qwen32_config
 from myvllm.engine.llm_engine import LLMEngine

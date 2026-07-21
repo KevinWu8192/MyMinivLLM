@@ -45,10 +45,10 @@ uv sync
 uv run python main.py
 
 # prefilling 基准测试
-uv run python benchmark_prefilling.py
+uv run python tests/benchmarks/benchmark_attention_prefill.py
 
 # decoding 基准测试
-uv run python benchmark_decoding.py
+uv run python tests/benchmarks/benchmark_attention_decode.py --mode benchmark
 ```
 
 ## 每个脚本的作用
@@ -69,7 +69,7 @@ uv run python main.py
 
 
 ```bash
-uv run python benchmark_prefilling.py
+uv run python tests/benchmarks/benchmark_attention_prefill.py
 ```
 
 预填充阶段对比
@@ -82,16 +82,17 @@ uv run python benchmark_prefilling.py
 
 
 ```bash
-uv run python benchmark_decoding.py
+uv run python tests/benchmarks/benchmark_attention_decode.py --mode benchmark
 ```
 
 解码阶段对比
 
-比较了在**解码阶段**（一次生成一个输出token）期间的三种实现：
+比较了在**解码阶段**（一次生成一个输出 token）使用的生产实现：
 
-1. **Naive PyTorch**：基于循环的实现，使用分页KV缓存
-2. **Optimized PyTorch**：向量化实现，支持批量 gathering 和 mask
-3. **Triton Kernel**：自定义GPU内核，用于优化 Pageattention 解码
+1. **原始 Paged Attention Decode**：原始单阶段 Triton 实现
+2. **Large-scale Split-KV Decode**：Qwen3-32B 使用的两阶段 GQA 优化实现
+
+该 Driver 还提供正确性与 CUDA Profiling 模式。完整说明见[测试与 Benchmark 目录](tests/README.md)。
 
 
 ## 项目结构
@@ -106,8 +107,10 @@ myvllm/
 │       ├── utils/        # 全局变量
 │       └── sampling_parameters.py 
 ├── main.py              # 推理演示
-├── benchmark_prefilling.py   # 预填充对比
-└── benchmark_decoding.py     # 解码对比
+└── tests/
+    ├── test_*.py             # 单元测试与回归测试
+    ├── benchmarks/           # CUDA 与端到端 Benchmark
+    └── results/              # 已提交的 Benchmark 结果
 ```
 
 ## 运行环境

@@ -1,4 +1,15 @@
-# Scheduler Tests
+# Tests and Benchmarks
+
+All verification assets live under `tests/`:
+
+```text
+tests/
+├── test_*.py                  # Pytest correctness and regression tests
+├── benchmarks/                # CUDA and end-to-end performance drivers
+└── results/qwen3_32b/         # Committed Qwen3-32B benchmark evidence
+```
+
+## Unit and Regression Tests
 
 ## Setup
 
@@ -8,19 +19,20 @@ pip install pytest xxhash
 
 ## Run
 
-All tests:
+Run all Pytest tests:
 ```bash
-python3 -m pytest tests/test_scheduler.py -v
+uv run pytest -q
 ```
 
-A specific class:
+Run scheduler tests or a specific scheduler regression:
 ```bash
-python3 -m pytest tests/test_scheduler.py::TestBug2TokenLimitBreak -v
-python3 -m pytest tests/test_scheduler.py::TestBug1CanAppendFailure -v
-python3 -m pytest tests/test_scheduler.py::TestSchedulerHappyPath -v
+uv run pytest tests/test_scheduler.py -v
+uv run pytest tests/test_scheduler.py::TestBug2TokenLimitBreak -v
+uv run pytest tests/test_scheduler.py::TestBug1CanAppendFailure -v
+uv run pytest tests/test_scheduler.py::TestSchedulerHappyPath -v
 ```
 
-## Test Classes
+### Scheduler Test Classes
 
 ### TestBug2TokenLimitBreak
 
@@ -47,3 +59,9 @@ Tests:
 - `test_prefill_scheduled_first` — a newly added sequence is scheduled as prefill and moved to `running`
 - `test_all_running_seqs_scheduled_when_budget_allows` — when the token budget is large enough, all running sequences are scheduled and remain in `running`
 - `test_preempt_only_seq_when_cant_append_and_running_empty` — when the only running sequence cannot append, it is preempted to `waiting` with status `WAITING`
+
+## Benchmarks and Results
+
+See [benchmarks/README.md](benchmarks/README.md) for the benchmark catalog and
+[results/qwen3_32b/README.md](results/qwen3_32b/README.md) for the committed
+Qwen3-32B hardware configuration, commands, results, and analysis.

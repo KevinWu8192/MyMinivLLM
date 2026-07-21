@@ -1,9 +1,9 @@
 """Correctness, timing, and profiler driver for paged decode attention.
 
 Examples:
-    uv run python tests/test_attention_large_scale_decode.py --mode correctness
-    uv run python tests/test_attention_large_scale_decode.py --mode benchmark
-    uv run python tests/test_attention_large_scale_decode.py --mode profile --iterations 1
+    uv run python tests/benchmarks/benchmark_attention_decode.py --mode correctness
+    uv run python tests/benchmarks/benchmark_attention_decode.py --mode benchmark
+    uv run python tests/benchmarks/benchmark_attention_decode.py --mode profile --iterations 1
 """
 
 from __future__ import annotations

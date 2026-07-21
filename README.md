@@ -44,10 +44,10 @@ uv sync
 uv run python main.py
 
 # Run prefilling benchmark
-uv run python benchmark_prefilling.py
+uv run python tests/benchmarks/benchmark_attention_prefill.py
 
 # Run decoding benchmark
-uv run python benchmark_decoding.py
+uv run python tests/benchmarks/benchmark_attention_decode.py --mode benchmark
 ```
 
 To run multi-GPU setting, simply change world_size to n > 1 in config in main.py
@@ -70,7 +70,7 @@ Demonstrates the complete LLM inference pipeline using a custom engine implement
 This showcases how the custom vLLM implementation handles batched text generation with memory-efficient attention.
 
 ```bash
-uv run python benchmark_prefilling.py
+uv run python tests/benchmarks/benchmark_attention_prefill.py
 ```
 
 This is the pefilling phase comparison
@@ -82,16 +82,17 @@ Compares three attention implementations during the **prefilling phase** (proces
 3. **Flash Attention (O(N) memory)**: Memory-efficient online softmax algorithm that processes attention in blocks
 
 ```bash
-uv run python benchmark_decoding.py
+uv run python tests/benchmarks/benchmark_attention_decode.py --mode benchmark
 ```
 
 This is the decoding phase comparison
 
-Compares three implementations during the **decoding phase** (generating output tokens one at a time):
+Compares the production implementations during the **decoding phase** (generating output tokens one at a time):
 
-1. **Naive PyTorch**: Simple loop-based implementation using paged KV cache
-2. **Optimized PyTorch**: Vectorized implementation with batch gathering and masking
-3. **Triton Kernel**: Custom GPU kernel optimized for paged attention decode
+1. **Original Paged Attention Decode**: The original single-stage Triton implementation
+2. **Large-scale Split-KV Decode**: The optimized two-stage GQA implementation used by Qwen3-32B
+
+The driver also provides correctness and CUDA profiling modes. See the complete [test and benchmark catalog](tests/README.md).
 
 
 ## Project Structure
@@ -106,8 +107,10 @@ myvllm/
 │       ├── utils/        # context
 │       └── sampling_parameters.py
 ├── main.py              # Full inference demo
-├── benchmark_prefilling.py   # Prefilling attention comparison
-└── benchmark_decoding.py     # Decoding attention comparison
+└── tests/
+    ├── test_*.py             # Unit and regression tests
+    ├── benchmarks/           # CUDA and end-to-end benchmarks
+    └── results/              # Committed benchmark results
 ```
 
 ## Requirements
