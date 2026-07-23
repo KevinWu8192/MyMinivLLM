@@ -33,6 +33,12 @@ class BlockManager:
         self.free_block_ids: deque[int] = deque(range(num_blocks))
         # used block ids
         self.used_block_ids: set[int] = set()
+        # High-water mark used by benchmarks and runtime diagnostics.
+        self.peak_num_used_blocks: int = 0
+
+    def reset_peak_num_used_blocks(self) -> None:
+        """Start a new usage interval without losing currently used blocks."""
+        self.peak_num_used_blocks = len(self.used_block_ids)
 
     # given token_ids, compute the hash value
     # use prefix_hash_value to compute the hash in a context-sensitive way
@@ -67,6 +73,9 @@ class BlockManager:
         block.reset()
         self.free_block_ids.remove(block_id)
         self.used_block_ids.add(block_id)
+        self.peak_num_used_blocks = max(
+            self.peak_num_used_blocks, len(self.used_block_ids)
+        )
         block.update(hash, token_ids)
         block.ref_count += 1
         return block
@@ -77,6 +86,9 @@ class BlockManager:
         assert block.ref_count == 0, "Block is already allocated"
         self.free_block_ids.remove(block_id)
         self.used_block_ids.add(block_id)
+        self.peak_num_used_blocks = max(
+            self.peak_num_used_blocks, len(self.used_block_ids)
+        )
         block.ref_count += 1
         return block
 

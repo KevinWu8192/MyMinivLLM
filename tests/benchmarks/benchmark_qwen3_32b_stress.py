@@ -52,6 +52,12 @@ class BenchmarkResult:
     decode_tokens_per_second: float
     output_tokens_per_second: float
     requests_per_second: float
+    block_size_tokens: int
+    total_kv_cache_blocks: int
+    peak_used_kv_cache_blocks: int
+    peak_kv_cache_memory_bytes_per_gpu: int
+    peak_kv_cache_memory_bytes_total: int
+    gpus: list[dict]
 
 
 @dataclass(frozen=True)
@@ -257,6 +263,10 @@ def safe_rate(tokens_or_requests: int, seconds: float) -> float:
     return tokens_or_requests / seconds if seconds > 0 else 0.0
 
 
+def format_bytes(byte_count: int) -> str:
+    return f"{byte_count / 2**30:.2f} GiB"
+
+
 def run_workload(
     engine: LLMEngine,
     name: str,
@@ -273,6 +283,7 @@ def run_workload(
     for prompt in prompts:
         engine.add_prompt(prompt, sampling)
 
+    engine.reset_benchmark_memory_stats()
     computed_prefill_tokens = 0
     decoded_tokens = 0
     prefill_seconds = 0.0
@@ -306,6 +317,12 @@ def run_workload(
     total_seconds = time.perf_counter() - workload_start
     output_token_count = sum(len(tokens) for tokens in completed.values())
     cached_tokens = max(0, prompt_tokens - computed_prefill_tokens)
+    memory_metrics = engine.get_benchmark_memory_metrics()
+    gpus = memory_metrics["gpus"]
+    block_bytes = gpus[0]["kv_cache_block_bytes"]
+    peak_kv_cache_memory_bytes_per_gpu = (
+        memory_metrics["peak_used_kv_cache_blocks"] * block_bytes
+    )
 
     if len(completed) != len(prompts):
         raise RuntimeError(
@@ -335,6 +352,18 @@ def run_workload(
         decode_tokens_per_second=safe_rate(decoded_tokens, decode_seconds),
         output_tokens_per_second=safe_rate(output_token_count, total_seconds),
         requests_per_second=safe_rate(len(prompts), total_seconds),
+        block_size_tokens=memory_metrics["block_size_tokens"],
+        total_kv_cache_blocks=memory_metrics["total_kv_cache_blocks"],
+        peak_used_kv_cache_blocks=(
+            memory_metrics["peak_used_kv_cache_blocks"]
+        ),
+        peak_kv_cache_memory_bytes_per_gpu=(
+            peak_kv_cache_memory_bytes_per_gpu
+        ),
+        peak_kv_cache_memory_bytes_total=(
+            peak_kv_cache_memory_bytes_per_gpu * len(gpus)
+        ),
+        gpus=gpus,
     )
 
 
@@ -355,6 +384,31 @@ def print_result(result: BenchmarkResult) -> None:
     print(f"decode tok/s:              {result.decode_tokens_per_second:,.2f}")
     print(f"end-to-end output tok/s:   {result.output_tokens_per_second:,.2f}")
     print(f"requests/s:                {result.requests_per_second:.4f}")
+    print(f"block size:                {result.block_size_tokens:,} tokens")
+    print(
+        "KV block memory/GPU:      "
+        f"{format_bytes(result.gpus[0]['kv_cache_block_bytes'])}"
+    )
+    print(f"total KV cache blocks:     {result.total_kv_cache_blocks:,}")
+    print(f"peak used KV blocks:       {result.peak_used_kv_cache_blocks:,}")
+    print(
+        "peak KV cache usage/GPU:  "
+        f"{format_bytes(result.peak_kv_cache_memory_bytes_per_gpu)}"
+    )
+    print(
+        "peak KV cache usage TP:   "
+        f"{format_bytes(result.peak_kv_cache_memory_bytes_total)}"
+    )
+    for gpu in result.gpus:
+        print(
+            f"GPU {gpu['device_index']} (rank {gpu['rank']}): "
+            f"{gpu['name']}, compute {gpu['compute_capability']}, "
+            f"total={format_bytes(gpu['total_memory_bytes'])}, "
+            f"model={format_bytes(gpu['model_memory_bytes'])}, "
+            f"KV capacity={format_bytes(gpu['kv_cache_capacity_bytes'])}, "
+            f"peak allocated={format_bytes(gpu['peak_allocated_memory_bytes'])}, "
+            f"peak reserved={format_bytes(gpu['peak_reserved_memory_bytes'])}"
+        )
 
 
 def selected_suites(args: argparse.Namespace) -> list[SuiteSpec]:
@@ -526,6 +580,10 @@ def run_suite(
             "engine_max_model_length": engine_max_model_length,
             "native_context_length": NATIVE_CONTEXT_LENGTH,
             "enforce_eager": args.enforce_eager,
+            "block_size_tokens": args.block_size,
+            "gpu_memory_utilization": args.gpu_memory_utilization,
+            "pytorch_version": torch.__version__,
+            "cuda_version": torch.version.cuda,
         },
         "results": [asdict(result) for result in results],
     }

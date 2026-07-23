@@ -211,6 +211,23 @@ class LLMEngine:
             raise ValueError("Prompt must contain at least one token")
         self.scheduler.add_sequence(Sequence(token_ids=token_ids, block_size=self.config['block_size'],sampling_params=sampling_params))
 
+    def reset_benchmark_memory_stats(self) -> None:
+        """Reset CUDA and KV-block high-water marks for one workload."""
+        self.model_runner.call("reset_peak_memory_stats")
+        self.scheduler.block_manager.reset_peak_num_used_blocks()
+
+    def get_benchmark_memory_metrics(self) -> dict:
+        """Collect per-rank CUDA metrics and rank-0 KV-block usage."""
+        block_manager = self.scheduler.block_manager
+        return {
+            "gpus": self.model_runner.call("get_gpu_memory_metrics"),
+            "total_kv_cache_blocks": len(block_manager.blocks),
+            "peak_used_kv_cache_blocks": (
+                block_manager.peak_num_used_blocks
+            ),
+            "block_size_tokens": block_manager.block_size,
+        }
+
     # given a list of prompts
     # add_prompt for each prompt
     # call step until all sequences are finished

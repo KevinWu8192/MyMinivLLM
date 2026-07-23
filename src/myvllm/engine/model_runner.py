@@ -320,12 +320,50 @@ class ModelRunner:
             device=f'cuda:{self.rank}',
             dtype=self.default_dtype,
         )
+        self.kv_cache_memory_bytes = (
+            allocated_kv_cache.numel() * allocated_kv_cache.element_size()
+        )
+        self.kv_cache_block_bytes = block_bytes
+        self.model_tensor_memory_bytes = sum(
+            tensor.numel() * tensor.element_size()
+            for tensor in (*self.model.parameters(), *self.model.buffers())
+        )
         layer_id = 0
         for module in self.model.modules():
             if hasattr(module, 'k_cache') and hasattr(module, 'v_cache'):
                 module.k_cache = allocated_kv_cache[0, layer_id]
                 module.v_cache = allocated_kv_cache[1, layer_id]
                 layer_id += 1
+
+    def reset_peak_memory_stats(self):
+        """Reset CUDA allocator high-water marks on every tensor-parallel rank."""
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
+
+    def get_gpu_memory_metrics(self):
+        """Return device and allocator metrics for every tensor-parallel rank."""
+        torch.cuda.synchronize()
+        properties = torch.cuda.get_device_properties(self.rank)
+        local_metrics = {
+            "rank": self.rank,
+            "device_index": self.rank,
+            "name": properties.name,
+            "compute_capability": (
+                f"{properties.major}.{properties.minor}"
+            ),
+            "total_memory_bytes": properties.total_memory,
+            "model_memory_bytes": self.model_tensor_memory_bytes,
+            "kv_cache_capacity_bytes": self.kv_cache_memory_bytes,
+            "kv_cache_block_bytes": self.kv_cache_block_bytes,
+            "peak_allocated_memory_bytes": torch.cuda.max_memory_allocated(),
+            "peak_reserved_memory_bytes": torch.cuda.max_memory_reserved(),
+        }
+        if self.world_size == 1:
+            return [local_metrics]
+
+        all_metrics = [None] * self.world_size
+        dist.all_gather_object(all_metrics, local_metrics)
+        return all_metrics if self.rank == 0 else None
 
     # given seqs
     # prepare the data needed for a prefill forward pass
